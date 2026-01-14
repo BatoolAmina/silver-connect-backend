@@ -15,32 +15,25 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 router.post('/register', async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
-
         if (!email || !password || !name) {
             return res.status(400).json({ message: 'All fields are required for registry.' });
         }
-
         const normalizedEmail = email.toLowerCase().trim();
         let user = await User.findOne({ email: normalizedEmail });
-        
         if (user) {
             return res.status(400).json({ message: 'Identity already exists in registry.' });
         }
-
         user = new User({ 
             name, 
             email: normalizedEmail, 
             password, 
             role: role || 'user' 
         });
-
         const salt = await bcrypt.genSalt(12);
         user.password = await bcrypt.hash(password, salt);
-
         await user.save();
         res.status(201).json({ message: '✓ Registration Successful.' });
     } catch (err) {
-        console.error("Register Error:", err);
         res.status(500).json({ message: 'Registry Server Error' });
     }
 });
@@ -49,19 +42,15 @@ router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         if (!email || !password) return res.status(400).json({ message: 'Missing credentials.' });
-
         const user = await User.findOne({ email: email.toLowerCase().trim() });
         if (!user) return res.status(400).json({ message: 'Invalid Protocol: Identity Mismatch.' });
-
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: 'Invalid Protocol: Credential Mismatch.' });
-
         const token = jwt.sign(
             { id: user._id, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: '1d' }
         );
-
         res.json({
             token,
             user: { 
@@ -81,17 +70,13 @@ router.post('/google-login', async (req, res) => {
     try {
         const { idToken, role } = req.body;
         if (!idToken) return res.status(400).json({ message: 'Token missing.' });
-
         const ticket = await client.verifyIdToken({
             idToken,
             audience: process.env.GOOGLE_CLIENT_ID,
         });
-        
         const { email, name, sub: googleId, picture: avatar } = ticket.getPayload();
         const normalizedEmail = email.toLowerCase().trim();
-        
         let user = await User.findOne({ email: normalizedEmail });
-
         if (!user) {
             user = new User({ 
                 name, 
@@ -103,13 +88,11 @@ router.post('/google-login', async (req, res) => {
             });
             await user.save();
         }
-
         const token = jwt.sign(
             { id: user._id, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: '1d' }
         );
-
         res.json({ token, user });
     } catch (err) {
         res.status(401).json({ message: 'Google Authentication Failed' });
@@ -118,11 +101,8 @@ router.post('/google-login', async (req, res) => {
 
 router.get('/verified-helpers', async (req, res) => {
     try {
-        const helpers = await User.find({ 
-            role: 'helper', 
-            isVerified: true 
-        }).select('name specialty experience workArea avatar summary email phone bio');
-        
+        const helpers = await User.find({ role: 'helper', isVerified: true })
+            .select('name specialty experience workArea avatar summary email phone bio');
         res.status(200).json(helpers);
     } catch (err) {
         res.status(500).json({ message: 'Internal Registry Fault' });
@@ -144,7 +124,6 @@ router.put('/update-profile', protect, async (req, res) => {
         delete updates.role;
         delete updates.isVerified;
         delete updates.email;
-
         const user = await User.findByIdAndUpdate(req.user.id, updates, { new: true }).select('-password');
         res.json({ message: 'Profile updated successfully', user });
     } catch (err) {
@@ -156,12 +135,10 @@ router.post('/upgrade-to-helper', protect, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
         if (!user) return res.status(404).json({ message: 'Identity not found.' });
-
         Object.assign(user, req.body);
         user.applicationStatus = 'pending';
         user.role = 'helper'; 
         user.isVerified = false;
-
         await user.save();
         res.json({ message: '✓ Dossier Filed. Awaiting Vetting.' });
     } catch (err) {
@@ -183,7 +160,6 @@ router.post('/admin/verify-helper', protect, adminOnly, async (req, res) => {
         const { userId, status } = req.body;
         const helper = await User.findById(userId);
         if (!helper) return res.status(404).json({ message: 'Helper not found' });
-
         if (status === 'approved') {
             helper.isVerified = true;
             helper.applicationStatus = 'approved';
@@ -193,7 +169,6 @@ router.post('/admin/verify-helper', protect, adminOnly, async (req, res) => {
             helper.applicationStatus = 'rejected';
             helper.role = 'user';
         }
-
         await helper.save();
         res.json({ message: `Audit Protocol: ${status.toUpperCase()}` });
     } catch (err) {
@@ -227,7 +202,6 @@ router.get('/admin/pending-helpers', protect, adminOnly, async (req, res) => {
             isVerified: false,
             applicationStatus: 'pending' 
         }).select('-password').sort({ createdAt: -1 });
-        
         res.json(pendingHelpers);
     } catch (err) {
         res.status(500).json({ message: 'Pending retrieval failed' });
@@ -238,10 +212,7 @@ router.post('/forgot-password', async (req, res) => {
     try {
         const { email } = req.body;
         const user = await User.findOne({ email });
-
-        if (!user) {
-            return res.status(404).json({ message: "User with this email does not exist." });
-        }
+        if (!user) return res.status(404).json({ message: "User not found." });
 
         const resetToken = crypto.randomBytes(32).toString('hex');
         user.resetPasswordToken = resetToken;
@@ -258,9 +229,7 @@ router.post('/forgot-password', async (req, res) => {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS
             },
-            tls: {
-                rejectUnauthorized: false 
-            }
+            tls: { rejectUnauthorized: false }
         });
 
         const mailOptions = {
@@ -270,19 +239,16 @@ router.post('/forgot-password', async (req, res) => {
             html: `
                 <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee;">
                     <h2 style="color: #0f172a;">Identity Recovery Request</h2>
-                    <p>You requested to reset your password. Click the button below to restore access.</p>
+                    <p>To reset your credentials, click the button below:</p>
                     <a href="${resetUrl}" style="background: #0f172a; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0;">Reset Password</a>
                     <p>This link expires in 60 minutes.</p>
-                    <p style="color: #64748b; font-size: 12px;">If you didn't request this, please ignore this email.</p>
                 </div>
             `
         };
-
         await transporter.sendMail(mailOptions);
         res.status(200).json({ success: true, message: "Recovery email dispatched." });
-
     } catch (err) {
-        res.status(500).json({ message: "Email could not be sent." });
+        res.status(500).json({ message: "Email dispatch failed." });
     }
 });
 
@@ -292,23 +258,14 @@ router.put('/reset-password/:token', async (req, res) => {
             resetPasswordToken: req.params.token,
             resetPasswordExpire: { $gt: Date.now() }
         });
-
-        if (!user) {
-            return res.status(400).json({ message: "Token is invalid or has expired." });
-        }
-
+        if (!user) return res.status(400).json({ message: "Invalid or expired token." });
         const salt = await bcrypt.genSalt(12);
         user.password = await bcrypt.hash(req.body.password, salt);
-
         user.resetPasswordToken = undefined;
         user.resetPasswordExpire = undefined;
-
         await user.save();
-
         res.status(200).json({ success: true, message: "Password updated successfully." });
-
     } catch (err) {
-        console.error(err);
         res.status(500).json({ message: "Registry update failed." });
     }
 });
