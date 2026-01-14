@@ -10,6 +10,8 @@ const { protect, adminOnly } = require('../middleware/authMiddleware');
 const crypto = require('crypto');
 const { Resend } = require('resend');
 
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 router.post('/register', async (req, res) => {
