@@ -244,7 +244,6 @@ router.post('/forgot-password', async (req, res) => {
         }
 
         const resetToken = crypto.randomBytes(32).toString('hex');
-        
         user.resetPasswordToken = resetToken;
         user.resetPasswordExpire = Date.now() + 3600000;
         await user.save();
@@ -261,10 +260,7 @@ router.post('/forgot-password', async (req, res) => {
             },
             tls: {
                 rejectUnauthorized: false 
-            },
-            pool: true,
-            maxConnections: 1,
-            connectionTimeout: 10000,
+            }
         });
 
         const mailOptions = {
@@ -286,7 +282,6 @@ router.post('/forgot-password', async (req, res) => {
         res.status(200).json({ success: true, message: "Recovery email dispatched." });
 
     } catch (err) {
-        console.error(err);
         res.status(500).json({ message: "Email could not be sent." });
     }
 });
