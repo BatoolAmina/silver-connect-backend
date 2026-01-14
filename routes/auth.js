@@ -8,7 +8,7 @@ const Booking = require('../models/Booking');
 const Review = require('../models/Review');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -211,7 +211,8 @@ router.get('/admin/pending-helpers', protect, adminOnly, async (req, res) => {
 router.post('/forgot-password', async (req, res) => {
     try {
         const { email } = req.body;
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email: email.toLowerCase().trim() });
+        
         if (!user) return res.status(404).json({ message: "User not found." });
 
         const resetToken = crypto.randomBytes(32).toString('hex');
@@ -221,35 +222,29 @@ router.post('/forgot-password', async (req, res) => {
 
         const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
-        const transporter = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
-            port: 465,
-            secure: true,
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS
-            },
-            tls: { rejectUnauthorized: false }
-        });
-
-        const mailOptions = {
-            from: `"Silver Connect Registry" <${process.env.EMAIL_USER}>`,
+        const { data, error } = await resend.emails.send({
+            from: 'Silver Connect <onboarding@resend.dev>',
             to: user.email,
             subject: 'Password Reset Request | Registry Access',
             html: `
-                <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee;">
+                <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
                     <h2 style="color: #0f172a;">Identity Recovery Request</h2>
-                    <p>To reset your credentials, click the button below:</p>
+                    <p>You requested to reset your password. Click the button below to restore access.</p>
                     <a href="${resetUrl}" style="background: #0f172a; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0;">Reset Password</a>
-                    <p>This link expires in 60 minutes.</p>
+                    <p style="color: #64748b; font-size: 12px;">This link expires in 60 minutes. If you didn't request this, please ignore this email.</p>
                 </div>
             `
-        };
-        await transporter.sendMail(mailOptions);
-        res.status(200).json({ success: true, message: "Recovery email dispatched." });
+        });
+
+        if (error) {
+            console.error("RESEND ERROR:", error);
+            return res.status(500).json({ message: "Email dispatch failed.", detail: error.message });
+        }
+
+        res.status(200).json({ success: true, message: "Recovery email dispatched via API." });
     } catch (err) {
-        console.error("FULL EMAIL ERROR:", err);
-        res.status(500).json({ message: "Email dispatch failed.", detail: err.message });
+        console.error("FORGOT PASSWORD ERROR:", err);
+        res.status(500).json({ message: "Internal Server Error." });
     }
 });
 
@@ -259,12 +254,15 @@ router.put('/reset-password/:token', async (req, res) => {
             resetPasswordToken: req.params.token,
             resetPasswordExpire: { $gt: Date.now() }
         });
+
         if (!user) return res.status(400).json({ message: "Invalid or expired token." });
+
         const salt = await bcrypt.genSalt(12);
         user.password = await bcrypt.hash(req.body.password, salt);
         user.resetPasswordToken = undefined;
         user.resetPasswordExpire = undefined;
         await user.save();
+
         res.status(200).json({ success: true, message: "Password updated successfully." });
     } catch (err) {
         res.status(500).json({ message: "Registry update failed." });
