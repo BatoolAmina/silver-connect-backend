@@ -248,7 +248,8 @@ router.post('/forgot-password', async (req, res) => {
         await transporter.sendMail(mailOptions);
         res.status(200).json({ success: true, message: "Recovery email dispatched." });
     } catch (err) {
-        res.status(500).json({ message: "Email dispatch failed." });
+        console.error("FULL EMAIL ERROR:", err);
+        res.status(500).json({ message: "Email dispatch failed.", detail: err.message });
     }
 });
 
