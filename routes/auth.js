@@ -8,9 +8,8 @@ const Booking = require('../models/Booking');
 const Review = require('../models/Review');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 const crypto = require('crypto');
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -213,9 +212,12 @@ router.get('/admin/pending-helpers', protect, adminOnly, async (req, res) => {
 router.post('/forgot-password', async (req, res) => {
     try {
         const { email } = req.body;
-        const user = await User.findOne({ email: email.toLowerCase().trim() });
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail });
         
-        if (!user) return res.status(404).json({ message: "User not found." });
+        if (!user) {
+            return res.status(404).json({ message: "User identity not found in registry." });
+        }
 
         const resetToken = crypto.randomBytes(32).toString('hex');
         user.resetPasswordToken = resetToken;
@@ -224,29 +226,52 @@ router.post('/forgot-password', async (req, res) => {
 
         const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
-        const { data, error } = await resend.emails.send({
-            from: 'Silver Connect <onboarding@resend.dev>',
-            to: user.email,
-            subject: 'Password Reset Request | Registry Access',
-            html: `
-                <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-                    <h2 style="color: #0f172a;">Identity Recovery Request</h2>
-                    <p>You requested to reset your password. Click the button below to restore access.</p>
-                    <a href="${resetUrl}" style="background: #0f172a; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0;">Reset Password</a>
-                    <p style="color: #64748b; font-size: 12px;">This link expires in 60 minutes. If you didn't request this, please ignore this email.</p>
-                </div>
-            `
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            host: 'smtp.gmail.com',
+            port: 587,
+            secure: false,
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            },
+            tls: {
+                rejectUnauthorized: false,
+                minVersion: 'TLSv1.2'
+            },
+            connectionTimeout: 15000,
+            greetingTimeout: 15000
         });
 
-        if (error) {
-            console.error("RESEND ERROR:", error);
-            return res.status(500).json({ message: "Email dispatch failed.", detail: error.message });
-        }
+        const mailOptions = {
+            from: `"Silver Connect Registry" <${process.env.EMAIL_USER}>`,
+            to: user.email,
+            subject: 'Password Reset Request | Secure Access',
+            html: `
+                <div style="font-family: sans-serif; padding: 25px; border: 1px solid #e2e8f0; border-radius: 15px; max-width: 500px; margin: auto;">
+                    <h2 style="color: #0f172a; text-align: center;">RESTORE ACCESS</h2>
+                    <p style="color: #475569; line-height: 1.6;">An identity recovery request was initiated. Use the secure link below to reset your cipher.</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${resetUrl}" style="background: #0f172a; color: white; padding: 15px 30px; text-decoration: none; border-radius: 10px; font-weight: bold; display: inline-block; letter-spacing: 1px;">RESET PASSWORD</a>
+                    </div>
+                    <p style="color: #94a3b8; font-size: 11px; text-align: center;">This link expires in 60 minutes. If you did not request this, no action is required.</p>
+                </div>
+            `
+        };
 
-        res.status(200).json({ success: true, message: "Recovery email dispatched via API." });
+        await transporter.sendMail(mailOptions);
+
+        res.status(200).json({ 
+            success: true, 
+            message: "RECOVERY LINK DISPATCHED TO REGISTERED NODE." 
+        });
+
     } catch (err) {
-        console.error("FORGOT PASSWORD ERROR:", err);
-        res.status(500).json({ message: "Internal Server Error." });
+        console.error("NODEMAILER ERROR:", err);
+        res.status(500).json({ 
+            message: "Email dispatch failed.", 
+            detail: err.message 
+        });
     }
 });
 
@@ -257,16 +282,24 @@ router.put('/reset-password/:token', async (req, res) => {
             resetPasswordExpire: { $gt: Date.now() }
         });
 
-        if (!user) return res.status(400).json({ message: "Invalid or expired token." });
+        if (!user) {
+            return res.status(400).json({ message: "Invalid or expired recovery token." });
+        }
 
         const salt = await bcrypt.genSalt(12);
         user.password = await bcrypt.hash(req.body.password, salt);
+        
         user.resetPasswordToken = undefined;
         user.resetPasswordExpire = undefined;
+        
         await user.save();
 
-        res.status(200).json({ success: true, message: "Password updated successfully." });
+        res.status(200).json({ 
+            success: true, 
+            message: "CREDENTIALS UPDATED. ACCESS RESTORED." 
+        });
     } catch (err) {
+        console.error("RESET ERROR:", err);
         res.status(500).json({ message: "Registry update failed." });
     }
 });

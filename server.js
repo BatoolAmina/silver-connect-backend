@@ -7,7 +7,9 @@ const hpp = require('hpp');
 require('dotenv').config();
 
 const app = express();
+
 app.set('trust proxy', 1);
+
 app.use(helmet());
 
 const corsOptions = {
@@ -45,8 +47,12 @@ app.use((req, res, next) => {
     if (req.body) req.body = sanitize(req.body);
     if (req.params) req.params = sanitize(req.params);
     if (req.query) {
-        const cleanQuery = sanitize(JSON.parse(JSON.stringify(req.query)));
-        Object.assign(req.query, cleanQuery);
+        try {
+            const cleanQuery = sanitize(JSON.parse(JSON.stringify(req.query)));
+            Object.assign(req.query, cleanQuery);
+        } catch (e) {
+            next();
+        }
     }
     next();
 });
@@ -71,5 +77,5 @@ app.get('/', (req, res) => res.send('Silver Connect API is Active 🛡️'));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-    console.log(`🛡️  SECURITY TERMINAL ACTIVE ON PORT ${PORT}`);
+    console.log(`SECURITY TERMINAL ACTIVE ON PORT ${PORT}`);
 });
