@@ -235,11 +235,14 @@ router.post('/forgot-password', async (req, res) => {
                 pass: process.env.EMAIL_PASS
             },
             tls: {
-                rejectUnauthorized: false
+                rejectUnauthorized: false,
+                servername: 'smtp.gmail.com'
             },
-            connectionTimeout: 20000,
-            greetingTimeout: 20000,
-            socketTimeout: 20000
+            connectionTimeout: 30000,
+            greetingTimeout: 30000,
+            socketTimeout: 30000,
+            debug: true,
+            logger: true
         });
 
         transporter.verify((error, success) => {
