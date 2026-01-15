@@ -243,6 +243,11 @@ router.post('/forgot-password', async (req, res) => {
             socketTimeout: 20000
         });
 
+        transporter.verify((error, success) => {
+            if (error) console.log("SMTP Setup Error:", error);
+            else console.log("✓ SMTP Server is ready");
+        });
+
         const mailOptions = {
             from: `"Silver Connect Registry" <${process.env.EMAIL_USER}>`,
             to: user.email,
@@ -268,9 +273,10 @@ router.post('/forgot-password', async (req, res) => {
 
     } catch (err) {
         console.error("NODEMAILER ERROR:", err);
+
         res.status(500).json({ 
-            message: "Email dispatch failed.", 
-            detail: err.message 
+            success: false,
+            message: "Security Protocol: Email dispatch failed. Please verify your credentials or try again later.",
         });
     }
 });
