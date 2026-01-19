@@ -1,8 +1,8 @@
-# 🔘 Silver Connect Backend
+# Silver Connect Backend
 
 This is the core engine and secure API terminal for the **Silver Connect** caregiving ecosystem. It manages the global personnel registry, encrypted identity handshakes, and service deployment authorizations.
 
-## 🚀 Architectural Features
+## Architectural Features
 
 * **Identity Handshake:** Robust JWT-based authentication with high-entropy Bcrypt password hashing.
 * **RBAC (Role-Based Access Control):** Granular middleware protection ensuring specific access levels for **Admins**, **Helpers**, and **Users**.
@@ -10,7 +10,7 @@ This is the core engine and secure API terminal for the **Silver Connect** careg
 * **Automated Identity Recovery:** Integrated **Nodemailer** protocol with cryptographic token generation for secure password resets.
 * **Relational Logic:** Advanced Mongoose schema design utilizing `.populate()` to link Users, Bookings, and Performance Audits (Reviews).
 
-## 🛠 Technical Stack
+## Technical Stack
 
 * **Runtime:** Node.js
 * **Framework:** Express.js
@@ -18,7 +18,7 @@ This is the core engine and secure API terminal for the **Silver Connect** careg
 * **Security:** JSON Web Tokens (JWT) & Crypto
 * **Communication:** SMTP via Nodemailer
 
-## ⚙️ Local Installation
+## Local Installation
 
 1.  **Clone the Registry:**
     ```bash
@@ -47,7 +47,7 @@ This is the core engine and secure API terminal for the **Silver Connect** careg
     npm start
     ```
 
-## 📡 API Reference (Core Endpoints)
+## API Reference (Core Endpoints)
 
 ### Authentication
 | Method | Endpoint | Access | Function |
