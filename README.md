@@ -22,7 +22,7 @@ This is the core engine and secure API terminal for the **Silver Connect** careg
 
 1.  **Clone the Registry:**
     ```bash
-    git clone [https://github.com/batoolamina/silver-connect-backend.git](https://github.com/batoolamina/silver-connect-backend.git)
+    git clone https://github.com/batoolamina/silver-connect-backend.git
     cd silver-connect-backend
     ```
 
