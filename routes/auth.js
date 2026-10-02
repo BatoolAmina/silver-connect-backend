@@ -208,17 +208,14 @@ router.get('/admin/pending-helpers', protect, adminOnly, async (req, res) => {
         res.status(500).json({ message: 'Pending retrieval failed' });
     }
 });
-
 router.post('/forgot-password', async (req, res) => {
     try {
         const { email } = req.body;
         const normalizedEmail = email.toLowerCase().trim();
         const user = await User.findOne({ email: normalizedEmail });
-        
         if (!user) {
             return res.status(404).json({ message: "User identity not found in registry." });
         }
-
         const resetToken = crypto.randomBytes(32).toString('hex');
         user.resetPasswordToken = resetToken;
         user.resetPasswordExpire = Date.now() + 3600000;
@@ -249,7 +246,6 @@ router.post('/forgot-password', async (req, res) => {
             if (error) console.log("SMTP Setup Error:", error);
             else console.log("✓ SMTP Server is ready");
         });
-
         const mailOptions = {
             from: `"Silver Connect Registry" <${process.env.EMAIL_USER}>`,
             to: user.email,
@@ -265,17 +261,13 @@ router.post('/forgot-password', async (req, res) => {
                 </div>
             `
         };
-
         await transporter.sendMail(mailOptions);
-
         res.status(200).json({ 
             success: true, 
             message: "RECOVERY LINK DISPATCHED TO REGISTERED NODE." 
         });
-
     } catch (err) {
         console.error("NODEMAILER ERROR:", err);
-
         res.status(500).json({ 
             success: false,
             message: "Security Protocol: Email dispatch failed. Please verify your credentials or try again later.",
@@ -289,19 +281,14 @@ router.put('/reset-password/:token', async (req, res) => {
             resetPasswordToken: req.params.token,
             resetPasswordExpire: { $gt: Date.now() }
         });
-
         if (!user) {
             return res.status(400).json({ message: "Invalid or expired recovery token." });
         }
-
         const salt = await bcrypt.genSalt(12);
         user.password = await bcrypt.hash(req.body.password, salt);
-        
         user.resetPasswordToken = undefined;
         user.resetPasswordExpire = undefined;
-        
         await user.save();
-
         res.status(200).json({ 
             success: true, 
             message: "CREDENTIALS UPDATED. ACCESS RESTORED." 
@@ -311,5 +298,4 @@ router.put('/reset-password/:token', async (req, res) => {
         res.status(500).json({ message: "Registry update failed." });
     }
 });
-
 module.exports = router;
