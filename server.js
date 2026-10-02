@@ -72,6 +72,7 @@ app.use('/api/helpers', require('./routes/helper'));
 app.use('/api/admin', require('./routes/admin')); 
 app.use('/api/contact', require('./routes/contact'));
 app.use('/api/reviews', require('./routes/review'));
+app.use('/api/notifications', require('./routes/notification'));
 
 app.get('/', (req, res) => res.send('Silver Connect API is Active 🛡️'));
 
