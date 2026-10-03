@@ -40,7 +40,11 @@ This is the core engine and secure API terminal for the **Silver Connect** careg
     EMAIL_USER=your_gmail_address
     EMAIL_PASS=your_gmail_app_password
     GOOGLE_CLIENT_ID=your_google_id
+    GEMINI_API_KEY=your_gemini_api_key
+    GEMINI_MODEL=gemini-flash-lite-latest
     ```
+
+   Get a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey). Keep it in the backend `.env` only; do not add it to the frontend environment. The assistant endpoint is `POST /api/assistant/chat` and accepts a `messages` array containing up to 8 `{ role, content }` entries.
 
 4.  **Launch Terminal:**
     ```bash
