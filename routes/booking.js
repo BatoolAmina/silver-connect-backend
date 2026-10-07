@@ -2,10 +2,12 @@ const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
 const Booking = require('../models/Booking');
+const AvailabilitySlot = require('../models/AvailabilitySlot');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { protect } = require('../middleware/authMiddleware');
 const { bookingStatuses, isValidTransition, canTransitionBooking } = require('../utils/bookingWorkflow');
+const { availabilityPeriods } = require('../utils/availability');
 
 router.post('/create', protect, async (req, res) => {
     try {
@@ -56,7 +58,7 @@ router.post('/create', protect, async (req, res) => {
             return res.status(400).json({ message: "Choose a valid care service" });
         }
 
-        if (preferredTime && !['Morning', 'Afternoon', 'Evening'].includes(preferredTime)) {
+        if (preferredTime && !availabilityPeriods.includes(preferredTime)) {
             return res.status(400).json({ message: "Choose a valid preferred time" });
         }
 
@@ -65,6 +67,9 @@ router.post('/create', protect, async (req, res) => {
             return res.status(400).json({ message: "Visit duration must be between 1 and 12 hours" });
         }
 
+        const visitDay = new Date(visitDate);
+        visitDay.setUTCHours(0, 0, 0, 0);
+        const requestedTime = preferredTime || 'Morning';
         const newBooking = new Booking({
             user: req.user._id,
             helper: helper._id,
@@ -77,7 +82,7 @@ router.post('/create', protect, async (req, res) => {
             address,
             notes,
             serviceType: serviceType || 'Companionship',
-            preferredTime: preferredTime || 'Morning',
+            preferredTime: requestedTime,
             durationHours: visitDuration,
             emergencyContactName,
             emergencyContactPhone,
@@ -85,7 +90,30 @@ router.post('/create', protect, async (req, res) => {
             statusHistory: [{ status: 'pending', changedBy: req.user._id, note: 'Booking requested' }]
         });
 
-        await newBooking.save();
+        const slot = await AvailabilitySlot.findOneAndUpdate(
+            {
+                helper: helper._id,
+                date: visitDay,
+                preferredTime: requestedTime,
+                booking: null
+            },
+            { $set: { booking: newBooking._id } },
+            { new: true }
+        );
+        if (!slot) {
+            return res.status(409).json({ message: 'That visit window is unavailable. Please choose a published open slot.' });
+        }
+
+        newBooking.availabilitySlot = slot._id;
+        try {
+            await newBooking.save();
+        } catch (error) {
+            await AvailabilitySlot.updateOne(
+                { _id: slot._id, booking: newBooking._id },
+                { $set: { booking: null } }
+            );
+            throw error;
+        }
         try {
             await Notification.create({
                 recipient: helper._id,
@@ -169,6 +197,12 @@ router.patch('/:id/status', protect, async (req, res) => {
             note: typeof note === 'string' ? note.trim().slice(0, 250) : undefined
         });
         await booking.save();
+        if (['rejected', 'cancelled'].includes(status) && booking.availabilitySlot) {
+            await AvailabilitySlot.updateOne(
+                { _id: booking.availabilitySlot, booking: booking._id },
+                { $set: { booking: null } }
+            );
+        }
         const recipients = isAdmin
             ? [booking.user, booking.helper]
             : [isRequester ? booking.helper : booking.user];
