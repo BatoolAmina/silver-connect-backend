@@ -6,6 +6,7 @@ const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Booking = require('../models/Booking');
 const Review = require('../models/Review');
+const Notification = require('../models/Notification');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
@@ -171,6 +172,18 @@ router.post('/admin/verify-helper', protect, adminOnly, async (req, res) => {
             helper.role = 'user';
         }
         await helper.save();
+        try {
+            await Notification.create({
+                recipient: helper._id,
+                type: 'system',
+                title: status === 'approved' ? 'Helper application approved' : 'Helper application update',
+                message: status === 'approved'
+                    ? 'Your helper application is approved. Your verified helper dashboard is now available.'
+                    : 'Your helper application was not approved. Your account remains available as a care recipient.'
+            });
+        } catch (notificationError) {
+            console.error('Helper application notification could not be created:', notificationError.message);
+        }
         res.json({ message: `Audit Protocol: ${status.toUpperCase()}` });
     } catch (err) {
         res.status(500).json({ message: 'Update Failed' });
