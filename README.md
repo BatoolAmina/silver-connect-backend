@@ -14,7 +14,6 @@ This is the core engine and secure API terminal for the **Silver Connect** careg
 * **Automated Identity Recovery:** Integrated **Nodemailer** protocol with cryptographic token generation for secure password resets.
 * **Relational Logic:** Advanced Mongoose schema design utilizing `.populate()` to link Users, Bookings, and Performance Audits (Reviews).
 * **Availability Scheduling:** Verified helpers publish dated visit windows; each window can be reserved by only one active booking.
-* **Live Public Metrics:** Homepage counts are served from current verified-helper, registered-family, completed-visit, and service-area records.
 
 ## Technical Stack
 
@@ -74,14 +73,13 @@ This is the core engine and secure API terminal for the **Silver Connect** careg
 | `POST` | `/api/bookings/create` | Private | Authorize specialist dispatch |
 | `PATCH` | `/api/bookings/:id/status` | Private | Update deployment status |
 
-### Availability and Public Metrics
+### Availability
 | Method | Endpoint | Access | Function |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/availability/:helperId` | Public | List a verified helper's open visit windows |
 | `GET` | `/api/availability/mine` | Helper | View published and reserved visit windows |
 | `POST` | `/api/availability` | Verified helper | Publish a date and visit window |
 | `DELETE` | `/api/availability/:id` | Helper | Remove an unreserved visit window |
-| `GET` | `/api/metrics` | Public | Read live homepage totals |
 
 Bookings must match a published helper date and time window. Pending and accepted requests reserve the window; rejected or cancelled requests release it.
 
