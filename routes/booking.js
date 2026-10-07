@@ -69,7 +69,19 @@ router.post('/create', protect, async (req, res) => {
 
         const visitDay = new Date(visitDate);
         visitDay.setUTCHours(0, 0, 0, 0);
+        const nextDay = new Date(visitDay);
+        nextDay.setUTCDate(nextDay.getUTCDate() + 1);
         const requestedTime = preferredTime || 'Morning';
+        const existingBooking = await Booking.exists({
+            helper: helper._id,
+            date: { $gte: visitDay, $lt: nextDay },
+            preferredTime: requestedTime,
+            status: { $in: ['pending', 'accepted'] }
+        });
+        if (existingBooking) {
+            return res.status(409).json({ message: 'This helper already has an active request for that visit window.' });
+        }
+
         const newBooking = new Booking({
             user: req.user._id,
             helper: helper._id,
@@ -90,28 +102,46 @@ router.post('/create', protect, async (req, res) => {
             statusHistory: [{ status: 'pending', changedBy: req.user._id, note: 'Booking requested' }]
         });
 
-        const slot = await AvailabilitySlot.findOneAndUpdate(
+        let slot = await AvailabilitySlot.findOneAndUpdate(
             {
                 helper: helper._id,
                 date: visitDay,
                 preferredTime: requestedTime,
-                booking: null
+                booking: null,
+                isPublished: true
             },
             { $set: { booking: newBooking._id } },
             { new: true }
         );
         if (!slot) {
-            return res.status(409).json({ message: 'That visit window is unavailable. Please choose a published open slot.' });
+            try {
+                slot = await AvailabilitySlot.create({
+                    helper: helper._id,
+                    date: visitDay,
+                    preferredTime: requestedTime,
+                    booking: newBooking._id,
+                    isPublished: false
+                });
+            } catch (error) {
+                if (error.code === 11000) {
+                    return res.status(409).json({ message: 'This helper already has an active request for that visit window.' });
+                }
+                throw error;
+            }
         }
 
         newBooking.availabilitySlot = slot._id;
         try {
             await newBooking.save();
         } catch (error) {
-            await AvailabilitySlot.updateOne(
-                { _id: slot._id, booking: newBooking._id },
-                { $set: { booking: null } }
-            );
+            if (slot.isPublished) {
+                await AvailabilitySlot.updateOne(
+                    { _id: slot._id, booking: newBooking._id },
+                    { $set: { booking: null } }
+                );
+            } else {
+                await AvailabilitySlot.deleteOne({ _id: slot._id, booking: newBooking._id });
+            }
             throw error;
         }
         try {
@@ -198,10 +228,18 @@ router.patch('/:id/status', protect, async (req, res) => {
         });
         await booking.save();
         if (['rejected', 'cancelled'].includes(status) && booking.availabilitySlot) {
-            await AvailabilitySlot.updateOne(
-                { _id: booking.availabilitySlot, booking: booking._id },
-                { $set: { booking: null } }
-            );
+            const slot = await AvailabilitySlot.findOne({
+                _id: booking.availabilitySlot,
+                booking: booking._id
+            }).select('isPublished');
+            if (slot?.isPublished) {
+                await AvailabilitySlot.updateOne(
+                    { _id: slot._id, booking: booking._id },
+                    { $set: { booking: null } }
+                );
+            } else if (slot) {
+                await AvailabilitySlot.deleteOne({ _id: slot._id, booking: booking._id });
+            }
         }
         const recipients = isAdmin
             ? [booking.user, booking.helper]
