@@ -39,6 +39,7 @@ router.get('/:helperId', async (req, res) => {
 
         const slots = await AvailabilitySlot.find({
             helper: helper._id,
+            isPublished: true,
             booking: null,
             date: { $gte: startOfToday() }
         }).select('date preferredTime').sort({ date: 1, preferredTime: 1 });
