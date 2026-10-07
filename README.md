@@ -2,6 +2,10 @@
 
 This is the core engine and secure API terminal for the **Silver Connect** caregiving ecosystem. It manages the global personnel registry, encrypted identity handshakes, and service deployment authorizations.
 
+## Related Project
+
+* **Frontend:** [Silver Connect Frontend](https://github.com/BatoolAmina/silver-connect)
+
 ## Architectural Features
 
 * **Identity Handshake:** Robust JWT-based authentication with high-entropy Bcrypt password hashing.
