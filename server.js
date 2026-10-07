@@ -69,7 +69,9 @@ mongoose.connect(process.env.MONGO_URI)
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/bookings', require('./routes/booking'));
 app.use('/api/helpers', require('./routes/helper'));
+app.use('/api/availability', require('./routes/availability'));
 app.use('/api/admin', require('./routes/admin')); 
+app.use('/api/metrics', require('./routes/metrics'));
 app.use('/api/contact', require('./routes/contact'));
 app.use('/api/reviews', require('./routes/review'));
 app.use('/api/notifications', require('./routes/notification'));
