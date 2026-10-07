@@ -11,6 +11,10 @@ const BookingSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    availabilitySlot: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'AvailabilitySlot'
+    },
 
     seniorName: { type: String, required: true },
     seniorEmail: { type: String, required: true },
