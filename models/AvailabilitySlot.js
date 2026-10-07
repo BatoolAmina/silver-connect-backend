@@ -19,6 +19,10 @@ const availabilitySlotSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Booking',
         default: null
+    },
+    isPublished: {
+        type: Boolean,
+        default: true
     }
 }, { timestamps: true });
 
