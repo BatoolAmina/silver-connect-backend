@@ -81,7 +81,7 @@ This is the core engine and secure API terminal for the **Silver Connect** careg
 | `POST` | `/api/availability` | Verified helper | Publish a date and visit window |
 | `DELETE` | `/api/availability/:id` | Helper | Remove an unreserved visit window |
 
-Bookings must match a published helper date and time window. Pending and accepted requests reserve the window; rejected or cancelled requests release it.
+Published helper windows appear as available to families. Families may also request another future date and time; these requests are subject to helper confirmation and cannot conflict with another pending or accepted request for the same window. Pending and accepted requests reserve a window; rejected or cancelled requests release it.
 
 ### Administrative
 | Method | Endpoint | Access | Function |
