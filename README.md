@@ -90,4 +90,4 @@ Published helper windows appear as available to families. Families may also requ
 | `POST` | `/api/auth/admin/verify-helper` | Admin | Approve specialist credentials |
 
 ---
-Built with passion for the caregiving community. 🔘
+Built with passion for the caregiving community.
